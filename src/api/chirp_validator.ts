@@ -1,55 +1,34 @@
 import { Request, Response, NextFunction } from "express";
+import { BadRequest } from "./errors.js";
+import {respondWithJSON} from "./json.js";
 //import { json } from "node:stream/consumers";
 
-export async function handlerChirpValidator(req: Request, res: Response){
-    let body = "";
+export async function handlerChirpValidator(req: Request, res: Response) {
+  type parameters = {
+    body: string;
+  };
 
-    req.on("data", (chunk)=> {
-        body += chunk.toString();
-    });
+  const params: parameters = req.body;
 
-    req.on("end", () => {
-        try {
-            const parsedBody = JSON.parse(body);
+  const maxChirpLength = 140;
+  if (params.body.length > maxChirpLength) {
+    throw new BadRequest("Chirp is too long. Max length is 140");
+  }
 
-            let chirp = parsedBody.body;
+  const words = params.body.split(" ");
 
-            if(!chirp){
-                res
-                    .status(400)
-                    .set("Content-Type", "application/json")
-                    .send(JSON.stringify({
-                        error: "Something went wrong"
-                    }));
-                return;
-            }
-            
-            if(chirp.length > 140){
-                res
-                    .status(400)
-                    .set("Content-Type", "application/json")
-                    .send(JSON.stringify({
-                        error: "Chirp is too long"
-                    }));
-                return;
-            }
+  const badWords = ["kerfuffle", "sharbert", "fornax"];
+  for (let i = 0; i < words.length; i++) {
+    const word = words[i];
+    const loweredWord = word.toLowerCase();
+    if (badWords.includes(loweredWord)) {
+      words[i] = "****";
+    }
+  }
 
-            let cleanedChirp = chirp
-                .replace(/kerfuffle\b/gi, "****")
-                .replace(/sharbert\b/gi, "****")
-                .replace(/fornax\b/gi, "****");
+  const cleaned = words.join(" ");
 
-            res
-                .status(200)
-                .set("Content-Type", "application/json")
-                .send(JSON.stringify({
-                    //cleanedBody: cleanedChirp
-                    cleanedBody: cleanedChirp
-                }));
-
-        } catch (error){
-            res.status(400).set("Content-Type", "application/json").send(JSON.stringify({error: "Something went wrong"}));
-        }
-    });
-
+  respondWithJSON(res, 200, {
+    cleanedBody: cleaned,
+  });
 }
